@@ -27,7 +27,7 @@ use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::InputPin;
 use generic_array::typenum::U32;
 use heapless::String;
-use crate::draw;
+use crate::{draw, ProgramState};
 
 pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
@@ -41,7 +41,7 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     BUSY: InputPin,
     RESET: OutputPin,
 {
-    draw::draw_image(display, include_bytes!("../assets/options.bmp"), 0, 0);
+    draw::draw_image(display, include_bytes!("../../assets/options.bmp"), 0, 0);
     draw::draw_textbox(display, "Programs", PROFONT_24_POINT, BinaryColor::Off, HorizontalAlignment::Left, 42, 3, (WIDTH - 42), 0);
 
     let items_per_page = 4;
@@ -84,4 +84,56 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
 
         draw::draw_text(display, item, BinaryColor::Off, 27, y_position);
     }
+}
+
+pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
+    display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
+    items: [&str; 6],
+    current_item: &mut usize,
+    current_page: &mut usize,
+    btn_up_pressed: bool,
+    btn_down_pressed: bool,
+    btn_a_pressed: bool,
+    btn_b_pressed: bool,
+) where
+    SPI: SpiWrite<u8>,
+    CS: OutputPin,
+    DC: OutputPin,
+    BUSY: InputPin,
+    RESET: OutputPin,
+{
+    // Handle navigation logic
+    if btn_up_pressed {
+        if *current_item > 0 {
+            *current_item -= 1;
+        }
+        draw_menu(display, items, *current_item, *current_page);
+        let _ = display.update();
+    }
+
+    if btn_down_pressed {
+        // Replace 4 with the length of your menu items list
+        if *current_item < 4 - 1 {
+            *current_item += 1;
+        }
+        draw_menu(display, items, *current_item, *current_page);
+        let _ = display.update();
+    }
+
+    // Clear display and draw menu
+    // draw_menu(display, items, *current_item);
+}
+
+pub fn launch_selected_program<SPI, CS, DC, BUSY, RESET>(
+    display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
+    current_item: usize,
+    btn_a_pressed: bool,
+) -> Option<ProgramState> where
+        SPI: SpiWrite<u8>,
+        CS: OutputPin,
+        DC: OutputPin,
+        BUSY: InputPin,
+        RESET: OutputPin,
+{
+    None
 }

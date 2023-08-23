@@ -16,7 +16,6 @@ mod draw;
 mod usb;
 mod screens;
 mod libs;
-mod menu;
 mod programs;
 
 use cortex_m::delay::Delay;
@@ -90,12 +89,18 @@ use profont::*;
 use rp2040_hal::gpio::Pin;
 
 use tinybmp::Bmp;
+
 use crate::menu::draw_menu;
-use crate::programs::blinky::{draw_blinky_screen, handle_blinky_program};
-use crate::screens::ccnb::draw_ccnb_screen;
-use crate::screens::info::draw_info_screen;
-use crate::screens::main::draw_main_screen;
-use crate::screens::socials::draw_socials_screen;
+
+// Programs
+use crate::programs::blinky::{handle_blinky_program};
+use crate::programs::menu;
+
+pub enum ProgramState {
+    Menu,
+    Lynix,
+    Blinky
+}
 
 /// Entry point to our bare-metal application.
 ///
@@ -249,7 +254,7 @@ fn main() -> ! {
     // Draw menu items.
     let mut selected_item = 1;
 
-    draw_menu(&mut display, items, selected_item, 0);
+    crate::programs::menu::draw_menu(&mut display, items, selected_item, 0);
 
     let _ = display.update();
 
@@ -261,75 +266,43 @@ fn main() -> ! {
     let mut current_page = 0;
     let items_per_page = 4;
 
+    // Current Program
+    let mut current_program = ProgramState::Menu;
+
     loop {
-        // Read button states
+
+        // Read Buttons
         let btn_up_pressed = btn_up.is_high().unwrap();
         let btn_down_pressed = btn_down.is_high().unwrap();
         let btn_a_pressed = btn_a.is_high().unwrap();
         let btn_b_pressed = btn_b.is_high().unwrap();
+        let btn_c_pressed = btn_b.is_high().unwrap();
 
-        // If not in program mode
-        if !is_in_program {
-            if btn_up_pressed {
-                if selected_item > 0 {
-                    selected_item -= 1;
+        match current_program {
+            ProgramState::Menu => {
+                menu::handle_menu_program(
+                    &mut display,
+                    items,
+                    &mut selected_item,
+                    &mut current_page,
+                    btn_up_pressed,
+                    btn_down_pressed,
+                    btn_a_pressed,
+                    btn_b_pressed,
+                );
+
+                if let Some(new_program) = menu::launch_selected_program(
+                    &mut display,
+                    selected_item,
+                    btn_a_pressed,
+                ) {
+                    current_program = new_program;
+                    // Clear display before entering the new program state
+                    //let _ = display.clear(BinaryColor::On);
                 }
             }
-
-            if btn_down_pressed {
-                if selected_item < items.len() - 1 {
-                    selected_item += 1;
-                }
-            }
-
-            // Calculate the current page based on the selected item
-            current_page = selected_item / items_per_page;
-
-            // Clear display before updating
-            let _ = display.clear(BinaryColor::On);
-
-            // Draw the menu for the current page
-            draw_menu(&mut display, items, selected_item, current_page);
-
-            if btn_a_pressed {
-                // Clear display before launching a program
-                let _ = display.clear(BinaryColor::On);
-
-                // Set program mode
-                is_in_program = true;
-
-                match selected_item {
-                    //0 => draw_main_screen(&mut display),
-                    //1 => draw_socials_screen(&mut display),
-                    // Handle other program launches based on the selected item
-                    4 => draw_blinky_screen(&mut display),
-                    _ => {}
-                }
-            }
-
-            if btn_b_pressed {
-                // Clear display before launching program menu
-                let _ = display.clear(BinaryColor::On);
-
-                // Clear Program Mode
-                is_in_program = false;
-
-                selected_item = current_page * items_per_page;
-                draw_menu(&mut display, items, selected_item, current_page);
-            }
-
-            // Update the display if any button was pressed
-            if btn_up_pressed || btn_down_pressed || btn_a_pressed || btn_b_pressed {
-                let _ = display.update();
-            }
-        }
-
-        // Your program mode handling here...
-        if is_in_program {
-            match selected_item {
-                4 => handle_blinky_program(&mut led_pin, &mut delay),
-                _ => {}
-            }
+            // Handle programs that are not found
+            _ => {}
         }
     }
 }
