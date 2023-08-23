@@ -84,6 +84,8 @@ use embedded_text::{
 use profont::*;
 
 use tinybmp::Bmp;
+use crate::screens::ccnb::draw_ccnb_screen;
+use crate::screens::info::draw_info_screen;
 use crate::screens::main::draw_main_screen;
 use crate::screens::socials::draw_socials_screen;
 
@@ -254,6 +256,17 @@ fn main() -> ! {
 
             // Disable 3v Rails
             power.set_low().unwrap();
+        }
+
+        // College Yr Start Program
+        if !btn_b.is_low().unwrap() {
+            let _ = display.clear(BinaryColor::On);
+            draw_ccnb_screen(&mut display);
+        }
+
+        if !btn_c.is_low().unwrap() {
+            let _ = display.clear(BinaryColor::On);
+            draw_info_screen(&mut display);
         }
         
         led_pin.set_high().unwrap();
