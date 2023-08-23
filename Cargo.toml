@@ -34,8 +34,10 @@ panic-halt= "0.2.0"
 # Graphics
 embedded-graphics = "0.8.0"
 embedded-text = "0.6.0"
+embedded-menu = "0.3.1" # Used for Program Menu
 tinybmp = "0.5.0"
 profont = "0.7.0"
+generic-array = "0.14.7"
 
 # rp2040-boot2 = "0.2"
 
