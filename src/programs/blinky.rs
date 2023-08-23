@@ -12,12 +12,9 @@ use embedded_text::{
     alignment::HorizontalAlignment,
 };
 use profont::*;
-use rp2040_hal::gpio::{Pin, PullUpInput, PushPullOutput};
-use rp2040_hal::gpio::bank0::{Gpio17, Gpio20, Gpio21, Gpio25, Gpio26};
-use rp2040_hal::pac::SPI0;
-use rp2040_hal::Spi;
-use rp2040_hal::spi::Enabled;
-use uc8151::{Uc8151, WIDTH};
+use rp2040_hal::gpio::{Pin, PushPullOutput};
+use rp2040_hal::gpio::bank0::{Gpio25};
+use uc8151::{WIDTH};
 
 use crate::draw;
 

@@ -1,31 +1,23 @@
 // Graphics
 use embedded_graphics::{
-    image::Image,
-    mono_font::{MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{PrimitiveStyle, Rectangle},
+    primitives::{Rectangle},
 };
-use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
-use embedded_graphics::text::{Text};
 use embedded_hal::blocking::spi::Write as SpiWrite;
 use core::fmt::Write as FmtWrite;
 use embedded_text::{
     alignment::HorizontalAlignment,
-    style::{HeightMode, TextBoxStyleBuilder},
-    TextBox,
 };
 
 use profont::*;
-use tinybmp::Bmp;
 use uc8151::{HEIGHT, Uc8151, WIDTH};
 
 
 // GPIO traits
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::InputPin;
-use generic_array::typenum::U32;
 use heapless::String;
 use crate::{draw, ProgramState};
 
@@ -55,9 +47,6 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
 
     for (index, item) in items.iter().enumerate().skip(start_index).take(items_per_page) {
         let y_position = 30 + (14 + (index as i32 - start_index as i32) * 20); // Adjust positioning as needed.
-
-        // Calculate the item index within the entire list
-        let item_index = start_index + index;
 
         // Highlight the selected item.
         if index == selected_item {
@@ -92,8 +81,6 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     current_item: &mut usize,
     btn_up_pressed: bool,
     btn_down_pressed: bool,
-    btn_a_pressed: bool,
-    btn_b_pressed: bool,
 ) where
     SPI: SpiWrite<u8>,
     CS: OutputPin,
@@ -129,18 +116,10 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     }
 }
 
-pub fn launch_selected_program<SPI, CS, DC, BUSY, RESET>(
-    display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
+pub fn launch_selected_program(
     current_item: usize,
     btn_a_pressed: bool,
-) -> Option<ProgramState>
-    where
-        SPI: SpiWrite<u8>,
-        CS: OutputPin,
-        DC: OutputPin,
-        BUSY: InputPin,
-        RESET: OutputPin,
-{
+) -> Option<ProgramState> {
     if btn_a_pressed {
         // let items = ["Lynix Badge", "CCNB", "Socials + QR", "Device Info", "Blinky", "Settings"];
 
@@ -156,5 +135,4 @@ pub fn launch_selected_program<SPI, CS, DC, BUSY, RESET>(
     } else {
         None // Return None if no program is launched
     }
-
 }

@@ -235,12 +235,9 @@ fn main() -> ! {
                     &mut selected_item,
                     btn_up_pressed,
                     btn_down_pressed,
-                    btn_a_pressed,
-                    btn_b_pressed,
                 );
 
                 let new_program = menu::launch_selected_program(
-                    &mut display,
                     selected_item,
                     btn_a_pressed,
                 );
