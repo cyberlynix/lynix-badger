@@ -101,16 +101,11 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     BUSY: InputPin,
     RESET: OutputPin,
 {
-    let current_page = *current_item / 4;
-
     // Handle navigation logic
     if btn_up_pressed {
         if *current_item > 0 {
             *current_item -= 1;
         }
-        let _ = display.clear(BinaryColor::On);
-        draw_menu(display, items, *current_item, current_page);
-        let _ = display.update();
     }
 
     if btn_down_pressed {
@@ -118,8 +113,18 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
         if *current_item < items.len() - 1 {
             *current_item += 1;
         }
-        let _ = display.clear(BinaryColor::On);
-        draw_menu(display, items, *current_item, current_page);
+    }
+
+    let current_page = *current_item / 4;
+
+    // Clear display before updating
+    let _ = display.clear(BinaryColor::On);
+
+    // Draw the menu for the current page
+    draw_menu(display, items, *current_item, current_page);
+
+    // Update the display if any button was pressed
+    if btn_up_pressed || btn_down_pressed {
         let _ = display.update();
     }
 }
