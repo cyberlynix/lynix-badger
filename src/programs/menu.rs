@@ -133,12 +133,28 @@ pub fn launch_selected_program<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
     current_item: usize,
     btn_a_pressed: bool,
-) -> Option<ProgramState> where
+) -> Option<ProgramState>
+    where
         SPI: SpiWrite<u8>,
         CS: OutputPin,
         DC: OutputPin,
         BUSY: InputPin,
         RESET: OutputPin,
 {
-    None
+    if btn_a_pressed {
+        // let items = ["Lynix Badge", "CCNB", "Socials + QR", "Device Info", "Blinky", "Settings"];
+
+        match current_item {
+            // Handle each case and return the corresponding program state
+            0 => Some(ProgramState::Lynix),
+            1 => Some(ProgramState::Ccnb),
+            2 => Some(ProgramState::Socials),
+            3 => Some(ProgramState::Info),
+            4 => Some(ProgramState::Blinky),
+            _ => Some(ProgramState::NotFound)
+        }
+    } else {
+        None // Return None if no program is launched
+    }
+
 }

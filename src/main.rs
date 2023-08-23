@@ -14,7 +14,6 @@
 
 mod draw;
 mod usb;
-mod screens;
 mod libs;
 mod programs;
 
@@ -93,13 +92,27 @@ use tinybmp::Bmp;
 use crate::menu::draw_menu;
 
 // Programs
-use crate::programs::blinky::{handle_blinky_program};
+use crate::programs::blinky::{draw_blinky_screen, handle_blinky_program};
+use crate::programs::ccnb::draw_ccnb_screen;
+use crate::programs::error::draw_error_screen;
+use crate::programs::info::draw_info_screen;
+use crate::programs::main::draw_main_screen;
 use crate::programs::menu;
+use crate::programs::socials::draw_socials_screen;
 
 pub enum ProgramState {
     Menu,
     Lynix,
-    Blinky
+    Ccnb,
+    Socials,
+    Info,
+    Blinky,
+    NotFound,
+}
+
+enum ButtonState {
+    Pressed,
+    Released,
 }
 
 /// Entry point to our bare-metal application.
@@ -159,7 +172,7 @@ fn main() -> ! {
     }
 
     // Create a USB device with a fake VID and PID
-    let usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x16c0, 0x11dd))
+    let usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x11c0, 0x10dd))
         .manufacturer("Lynix Security")
         .product("Lynix E-Ink Badge")
         .serial_number("FREAK-4921.8222023")
@@ -254,20 +267,18 @@ fn main() -> ! {
     // Draw menu items.
     let mut selected_item = 1;
 
-    crate::programs::menu::draw_menu(&mut display, items, selected_item, 0);
+    //crate::programs::menu::draw_menu(&mut display, items, selected_item, 0);
 
-    let _ = display.update();
+    //let _ = display.update();
 
     let mut serial = unsafe { USB_SERIAL.as_mut().unwrap() };
 
-    let mut is_in_program = false;
-
     // Initialize variables for paging
     let mut current_page = 0;
-    let items_per_page = 4;
 
     // Current Program
-    let mut current_program = ProgramState::Menu;
+    let mut initial_screen_drawn = false;
+    let mut current_program = ProgramState::Lynix;
 
     loop {
 
@@ -278,8 +289,21 @@ fn main() -> ! {
         let btn_b_pressed = btn_b.is_high().unwrap();
         let btn_c_pressed = btn_b.is_high().unwrap();
 
+        if btn_b_pressed {
+            initial_screen_drawn = false;
+            current_program = ProgramState::Menu;
+            let _ = display.clear(BinaryColor::On);
+        }
+
         match current_program {
             ProgramState::Menu => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    crate::programs::menu::draw_menu(&mut display, items, selected_item, current_page);
+                    let _ = display.update();
+                    initial_screen_drawn = true;
+                }
+
                 menu::handle_menu_program(
                     &mut display,
                     items,
@@ -290,15 +314,67 @@ fn main() -> ! {
                     btn_b_pressed,
                 );
 
-                if let Some(new_program) = menu::launch_selected_program(
+                let new_program = menu::launch_selected_program(
                     &mut display,
                     selected_item,
                     btn_a_pressed,
-                ) {
-                    current_program = new_program;
-                    // Clear display before entering the new program state
-                    //let _ = display.clear(BinaryColor::On);
+                );
+
+                if let Some(program_state) = new_program {
+                    current_program = program_state;
+                    let _ = display.clear(BinaryColor::On);
+                    initial_screen_drawn = false;
                 }
+            }
+            ProgramState::Blinky => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    draw_blinky_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+
+                // Handle Blinky program logic
+                handle_blinky_program(&mut led_pin, &mut delay, false);
+            }
+            ProgramState::Lynix => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    draw_main_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+            }
+            ProgramState::Ccnb => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    draw_ccnb_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+            }
+            ProgramState::Socials => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    draw_socials_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+            }
+            ProgramState::Info => {
+                // Draw Screen
+                if !initial_screen_drawn {
+                    draw_info_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+            }
+            ProgramState::NotFound => {
+                if !initial_screen_drawn {
+                    draw_error_screen(&mut display);
+                    initial_screen_drawn = true;
+                }
+
+                delay.delay_ms(2000);
+
+                current_program = ProgramState::Menu;
+                let _ = display.clear(BinaryColor::On);
+                initial_screen_drawn = false;
             }
             // Handle programs that are not found
             _ => {}
