@@ -284,7 +284,6 @@ fn main() -> ! {
                     &mut display,
                     items,
                     &mut selected_item,
-                    &mut current_page,
                     btn_up_pressed,
                     btn_down_pressed,
                     btn_a_pressed,

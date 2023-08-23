@@ -90,7 +90,6 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
     items: [&str; 6],
     current_item: &mut usize,
-    current_page: &mut usize,
     btn_up_pressed: bool,
     btn_down_pressed: bool,
     btn_a_pressed: bool,
@@ -102,26 +101,27 @@ pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     BUSY: InputPin,
     RESET: OutputPin,
 {
+    let current_page = *current_item / 4;
+
     // Handle navigation logic
     if btn_up_pressed {
         if *current_item > 0 {
             *current_item -= 1;
         }
-        draw_menu(display, items, *current_item, *current_page);
+        let _ = display.clear(BinaryColor::On);
+        draw_menu(display, items, *current_item, current_page);
         let _ = display.update();
     }
 
     if btn_down_pressed {
         // Replace 4 with the length of your menu items list
-        if *current_item < 4 - 1 {
+        if *current_item < items.len() - 1 {
             *current_item += 1;
         }
-        draw_menu(display, items, *current_item, *current_page);
+        let _ = display.clear(BinaryColor::On);
+        draw_menu(display, items, *current_item, current_page);
         let _ = display.update();
     }
-
-    // Clear display and draw menu
-    // draw_menu(display, items, *current_item);
 }
 
 pub fn launch_selected_program<SPI, CS, DC, BUSY, RESET>(
