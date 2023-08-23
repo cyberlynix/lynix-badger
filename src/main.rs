@@ -17,20 +17,14 @@ mod usb;
 mod libs;
 mod programs;
 
-use cortex_m::delay::Delay;
 // The macro for our start-up function
 use rp_pico::entry;
 
 // The macro for marking our interrupt functions
-use rp_pico::hal::pac::interrupt;
 
 // GPIO traits
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::InputPin;
-
-// Ensure we halt the program on panic (if we don't mention this crate it won't
-// be linked)
-use panic_halt as _;
 
 // Pull in any important traits
 use rp_pico::hal::prelude::*;
@@ -44,7 +38,6 @@ use rp_pico::hal::pac;
 use rp_pico::hal;
 use hal::timer::Timer;
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
-use defmt::export::char;
 
 // USB Device support
 use usb_device::{class_prelude::*, prelude::*};
@@ -62,34 +55,15 @@ static mut USB_BUS: Option<UsbBusAllocator<hal::usb::UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<hal::usb::UsbBus>> = None;
 
 // Display
-use uc8151::{Uc8151, WIDTH};
 use fugit::RateExtU32;
 use fugit::ExtU32;
 
 // Graphics
 use embedded_graphics::{
-    image::Image,
-    mono_font::{ascii::*, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
-    primitives::{PrimitiveStyle, Rectangle},
 };
-use embedded_graphics::mono_font::MonoFont;
-use embedded_graphics::primitives::{Circle, PrimitiveStyleBuilder};
-use embedded_graphics::text::{Text, TextStyle, TextStyleBuilder};
 use embedded_hal::blocking::spi::Write;
-use embedded_text::{
-    alignment::HorizontalAlignment,
-    style::{HeightMode, TextBoxStyleBuilder},
-    TextBox,
-};
-use generic_array::GenericArray;
-use profont::*;
-use rp2040_hal::gpio::Pin;
-
-use tinybmp::Bmp;
-
-use crate::menu::draw_menu;
 
 // Programs
 use crate::programs::blinky::{draw_blinky_screen, handle_blinky_program};
@@ -99,6 +73,8 @@ use crate::programs::info::draw_info_screen;
 use crate::programs::main::draw_main_screen;
 use crate::programs::menu;
 use crate::programs::socials::draw_socials_screen;
+
+use panic_halt as _;
 
 pub enum ProgramState {
     Menu,
@@ -147,52 +123,6 @@ fn main() -> ! {
     .ok()
     .unwrap();
 
-    // Set up the USB driver
-    let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
-        pac.USBCTRL_REGS,
-        pac.USBCTRL_DPRAM,
-        clocks.usb_clock,
-        true,
-        &mut pac.RESETS,
-    ));
-    unsafe {
-        // Note (safety): This is safe as interrupts haven't been started yet
-        USB_BUS = Some(usb_bus);
-    }
-
-    // Grab a reference to the USB Bus allocator. We are promising to the
-    // compiler not to take mutable access to this global variable whilst this
-    // reference exists!
-    let bus_ref = unsafe { USB_BUS.as_ref().unwrap() };
-
-    // Set up the USB Communications Class Device driver
-    let serial = SerialPort::new(bus_ref);
-    unsafe {
-        USB_SERIAL = Some(serial);
-    }
-
-    // Create a USB device with a fake VID and PID
-    let usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x11c0, 0x10dd))
-        .manufacturer("Lynix Security")
-        .product("Lynix E-Ink Badge")
-        .serial_number("FREAK-4921.8222023")
-        .device_class(2) // from: https://www.usb.org/defined-class-codes
-        .build();
-    unsafe {
-        // Note (safety): This is safe as interrupts haven't been started yet
-        USB_DEVICE = Some(usb_dev);
-    }
-
-    // Enable the USB interrupt
-    unsafe {
-        pac::NVIC::unmask(hal::pac::Interrupt::USBCTRL_IRQ);
-    };
-
-    // No more USB code after this point in main! We can do anything we want in
-    // here since USB is handled in the interrupt - let's blink an LED!
-
-    // The delay object lets us wait for specified amounts of time (in
-    // milliseconds)
     let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
 
@@ -211,8 +141,8 @@ fn main() -> ! {
     let _spi_sclk = pins.gpio18.into_mode::<hal::gpio::FunctionSpi>();
     let _spi_mosi = pins.gpio19.into_mode::<hal::gpio::FunctionSpi>();
     let spi = hal::Spi::<_, _, 8>::new(pac.SPI0);
-    let mut dc = pins.gpio20.into_push_pull_output();
-    let mut cs = pins.gpio17.into_push_pull_output();
+    let dc = pins.gpio20.into_push_pull_output();
+    let cs = pins.gpio17.into_push_pull_output();
     let busy = pins.gpio26.into_pull_up_input();
     let reset = pins.gpio21.into_push_pull_output();
 
@@ -229,7 +159,7 @@ fn main() -> ! {
 
     let mut btn_a = pins.gpio12.into_pull_down_input();
     let mut btn_b = pins.gpio13.into_pull_down_input();
-    let mut btn_c = pins.gpio14.into_pull_down_input();
+    //let mut btn_c = pins.gpio14.into_pull_down_input();
 
     // Get all the basic peripherals, and init clocks/timers
     // Enable 3.3V power or you won't see anything
@@ -271,11 +201,6 @@ fn main() -> ! {
 
     //let _ = display.update();
 
-    let mut serial = unsafe { USB_SERIAL.as_mut().unwrap() };
-
-    // Initialize variables for paging
-    let mut current_page = 0;
-
     // Current Program
     let mut initial_screen_drawn = false;
     let mut current_program = ProgramState::Lynix;
@@ -287,7 +212,7 @@ fn main() -> ! {
         let btn_down_pressed = btn_down.is_high().unwrap();
         let btn_a_pressed = btn_a.is_high().unwrap();
         let btn_b_pressed = btn_b.is_high().unwrap();
-        let btn_c_pressed = btn_b.is_high().unwrap();
+        //let btn_c_pressed = btn_b.is_high().unwrap();
 
         if btn_b_pressed {
             initial_screen_drawn = false;
@@ -299,7 +224,7 @@ fn main() -> ! {
             ProgramState::Menu => {
                 // Draw Screen
                 if !initial_screen_drawn {
-                    crate::programs::menu::draw_menu(&mut display, items, selected_item, current_page);
+                    menu::draw_menu(&mut display, items, selected_item, 0);
                     let _ = display.update();
                     initial_screen_drawn = true;
                 }
@@ -377,7 +302,6 @@ fn main() -> ! {
                 initial_screen_drawn = false;
             }
             // Handle programs that are not found
-            _ => {}
         }
     }
 }
