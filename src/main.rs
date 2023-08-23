@@ -106,6 +106,7 @@ fn main() -> ! {
     // Configure the clocks
     //
     // The default is to generate a 125 MHz system clock
+    // TODO: Run at a lower clock speed to save battery.
     let clocks = hal::clocks::init_clocks_and_plls(
         rp_pico::XOSC_CRYSTAL_FREQ,
         pac.XOSC,
@@ -198,6 +199,10 @@ fn main() -> ! {
     let mut btn_up = pins.gpio15.into_pull_down_input();
     let mut btn_down = pins.gpio11.into_pull_down_input();
 
+    let mut btn_a = pins.gpio12.into_pull_down_input();
+    let mut btn_b = pins.gpio13.into_pull_down_input();
+    let mut btn_c = pins.gpio14.into_pull_down_input();
+
     // Get all the basic peripherals, and init clocks/timers
     // Enable 3.3V power or you won't see anything
     let mut power = pins.gpio10.into_push_pull_output();
@@ -241,6 +246,14 @@ fn main() -> ! {
         if !btn_down.is_low().unwrap() {
             let _ = display.clear(BinaryColor::On);
             draw_socials_screen(&mut display);
+        }
+
+        // Set Low Power Mode (Battery Only)
+        if !btn_a.is_low().unwrap() {
+            // TODO: Set Energy Mode (12 MHz or 4Mhz)
+
+            // Disable 3v Rails
+            power.set_low().unwrap();
         }
         
         led_pin.set_high().unwrap();
