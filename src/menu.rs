@@ -9,7 +9,8 @@ use embedded_graphics::{
 use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::primitives::PrimitiveStyleBuilder;
 use embedded_graphics::text::{Text};
-use embedded_hal::blocking::spi::Write;
+use embedded_hal::blocking::spi::Write as SpiWrite;
+use core::fmt::Write as FmtWrite;
 use embedded_text::{
     alignment::HorizontalAlignment,
     style::{HeightMode, TextBoxStyleBuilder},
@@ -18,20 +19,23 @@ use embedded_text::{
 
 use profont::*;
 use tinybmp::Bmp;
-use uc8151::{Uc8151, WIDTH};
+use uc8151::{HEIGHT, Uc8151, WIDTH};
 
 
 // GPIO traits
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::digital::v2::InputPin;
+use generic_array::typenum::U32;
+use heapless::String;
 use crate::draw;
 
 pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
-    items: [&str; 3],
-    selected_item: usize
+    items: [&str; 6],
+    selected_item: usize,
+    page: usize
 ) where
-    SPI: Write<u8>,
+    SPI: SpiWrite<u8>,
     CS: OutputPin,
     DC: OutputPin,
     BUSY: InputPin,
@@ -40,8 +44,20 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     draw::draw_image(display, include_bytes!("../assets/options.bmp"), 0, 0);
     draw::draw_textbox(display, "Programs", PROFONT_24_POINT, BinaryColor::Off, HorizontalAlignment::Left, 42, 3, (WIDTH - 42), 0);
 
-    for (index, item) in items.iter().enumerate() {
-        let y_position = 30 + (14 + (index as i32) * 20); // Adjust positioning as needed.
+    let items_per_page = 4;
+    let start_index = page * items_per_page;
+
+    let mut page_text: String<32> = String::from("[");
+
+    write!(page_text, "{}/{}]", page + 1, (items.len() / items_per_page) + 1).unwrap();
+    // Now draw the text with the formatted page number
+    draw::draw_text(display, &page_text, BinaryColor::Off, (WIDTH - 50) as i32, (HEIGHT - 5) as i32);
+
+    for (index, item) in items.iter().enumerate().skip(start_index).take(items_per_page) {
+        let y_position = 30 + (14 + (index as i32 - start_index as i32) * 20); // Adjust positioning as needed.
+
+        // Calculate the item index within the entire list
+        let item_index = start_index + index;
 
         // Highlight the selected item.
         if index == selected_item {
@@ -51,7 +67,7 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
                 .fill_color(BinaryColor::Off)
                 .build();
 
-            Rectangle::new(Point::new(0, y_position - 9), Size::new(10, 10))
+            Rectangle::new(Point::new(10, y_position - 9), Size::new(10, 10))
                 .into_styled(style)
                 .draw(display).unwrap();
         } else {
@@ -61,11 +77,11 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
                 .fill_color(BinaryColor::On)
                 .build();
 
-            Rectangle::new(Point::new(0, y_position - 9), Size::new(10, 10))
+            Rectangle::new(Point::new(10, y_position - 9), Size::new(10, 10))
                 .into_styled(style)
                 .draw(display).unwrap();
         }
 
-        draw::draw_text(display, item, BinaryColor::Off, 17, y_position);
+        draw::draw_text(display, item, BinaryColor::Off, 27, y_position);
     }
 }

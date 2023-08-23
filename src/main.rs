@@ -17,7 +17,9 @@ mod usb;
 mod screens;
 mod libs;
 mod menu;
+mod programs;
 
+use cortex_m::delay::Delay;
 // The macro for our start-up function
 use rp_pico::entry;
 
@@ -85,9 +87,11 @@ use embedded_text::{
 };
 use generic_array::GenericArray;
 use profont::*;
+use rp2040_hal::gpio::Pin;
 
 use tinybmp::Bmp;
 use crate::menu::draw_menu;
+use crate::programs::blinky::{draw_blinky_screen, handle_blinky_program};
 use crate::screens::ccnb::draw_ccnb_screen;
 use crate::screens::info::draw_info_screen;
 use crate::screens::main::draw_main_screen;
@@ -150,7 +154,7 @@ fn main() -> ! {
     }
 
     // Create a USB device with a fake VID and PID
-    let usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x16c0, 0x10dd))
+    let usb_dev = UsbDeviceBuilder::new(bus_ref, UsbVidPid(0x16c0, 0x11dd))
         .manufacturer("Lynix Security")
         .product("Lynix E-Ink Badge")
         .serial_number("FREAK-4921.8222023")
@@ -240,12 +244,12 @@ fn main() -> ! {
 
     let _ = display.update();
 
-    let items = ["Lynix", "QR", "Device Info"];
+    let items = ["Lynix Badge", "CCNB", "Socials + QR", "Device Info", "Blinky", "Settings"];
 
     // Draw menu items.
     let mut selected_item = 1;
 
-    draw_menu(&mut display, items, selected_item);
+    draw_menu(&mut display, items, selected_item, 0);
 
     let _ = display.update();
 
@@ -253,23 +257,41 @@ fn main() -> ! {
 
     let mut is_in_program = false;
 
+    // Initialize variables for paging
+    let mut current_page = 0;
+    let items_per_page = 4;
+
     loop {
+        // Read button states
+        let btn_up_pressed = btn_up.is_high().unwrap();
+        let btn_down_pressed = btn_down.is_high().unwrap();
+        let btn_a_pressed = btn_a.is_high().unwrap();
+        let btn_b_pressed = btn_b.is_high().unwrap();
+
+        // If not in program mode
         if !is_in_program {
-            if btn_up.is_high().unwrap() {
-                let _ = display.clear(BinaryColor::On);
-                selected_item -= 1;
-                draw_menu(&mut display, items, selected_item);
-                let _ = display.update();
+            if btn_up_pressed {
+                if selected_item > 0 {
+                    selected_item -= 1;
+                }
             }
 
-            if btn_down.is_high().unwrap() {
-                let _ = display.clear(BinaryColor::On);
-                selected_item += 1;
-                draw_menu(&mut display, items, selected_item);
-                let _ = display.update();
+            if btn_down_pressed {
+                if selected_item < items.len() - 1 {
+                    selected_item += 1;
+                }
             }
 
-            if btn_a.is_high().unwrap() {
+            // Calculate the current page based on the selected item
+            current_page = selected_item / items_per_page;
+
+            // Clear display before updating
+            let _ = display.clear(BinaryColor::On);
+
+            // Draw the menu for the current page
+            draw_menu(&mut display, items, selected_item, current_page);
+
+            if btn_a_pressed {
                 // Clear display before launching a program
                 let _ = display.clear(BinaryColor::On);
 
@@ -277,24 +299,37 @@ fn main() -> ! {
                 is_in_program = true;
 
                 match selected_item {
-                    0 => draw_main_screen(&mut display),
-                    1 => draw_socials_screen(&mut display),
-                    2 => draw_info_screen(&mut display),
+                    //0 => draw_main_screen(&mut display),
+                    //1 => draw_socials_screen(&mut display),
+                    // Handle other program launches based on the selected item
+                    4 => draw_blinky_screen(&mut display),
                     _ => {}
                 }
             }
+
+            if btn_b_pressed {
+                // Clear display before launching program menu
+                let _ = display.clear(BinaryColor::On);
+
+                // Clear Program Mode
+                is_in_program = false;
+
+                selected_item = current_page * items_per_page;
+                draw_menu(&mut display, items, selected_item, current_page);
+            }
+
+            // Update the display if any button was pressed
+            if btn_up_pressed || btn_down_pressed || btn_a_pressed || btn_b_pressed {
+                let _ = display.update();
+            }
         }
 
-        if btn_b.is_high().unwrap() {
-            // Clear display before launching program menu
-            let _ = display.clear(BinaryColor::On);
-
-            // Clear Program Mode
-            is_in_program = false;
-
-            selected_item = 0;
-            draw_menu(&mut display, items, selected_item);
-            let _ = display.update();
+        // Your program mode handling here...
+        if is_in_program {
+            match selected_item {
+                4 => handle_blinky_program(&mut led_pin, &mut delay),
+                _ => {}
+            }
         }
     }
 }
