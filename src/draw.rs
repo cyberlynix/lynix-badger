@@ -89,6 +89,6 @@ pub fn draw_text<SPI, CS, DC, BUSY, RESET>(
     BUSY: InputPin,
     RESET: OutputPin,
 {
-    let text_style = MonoTextStyle::new(&PROFONT_24_POINT, foreground);
+    let text_style = MonoTextStyle::new(&PROFONT_14_POINT, foreground);
     Text::new(text, Point::new(x, y), text_style).draw(display).unwrap();
 }

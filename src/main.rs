@@ -15,6 +15,8 @@
 mod draw;
 mod usb;
 mod screens;
+mod libs;
+mod menu;
 
 // The macro for our start-up function
 use rp_pico::entry;
@@ -74,16 +76,18 @@ use embedded_graphics::{
 };
 use embedded_graphics::mono_font::MonoFont;
 use embedded_graphics::primitives::{Circle, PrimitiveStyleBuilder};
-use embedded_graphics::text::{Text, TextStyleBuilder};
+use embedded_graphics::text::{Text, TextStyle, TextStyleBuilder};
 use embedded_hal::blocking::spi::Write;
 use embedded_text::{
     alignment::HorizontalAlignment,
     style::{HeightMode, TextBoxStyleBuilder},
     TextBox,
 };
+use generic_array::GenericArray;
 use profont::*;
 
 use tinybmp::Bmp;
+use crate::menu::draw_menu;
 use crate::screens::ccnb::draw_ccnb_screen;
 use crate::screens::info::draw_info_screen;
 use crate::screens::main::draw_main_screen;
@@ -232,43 +236,65 @@ fn main() -> ! {
 
     let _ = display.clear(BinaryColor::On);
 
-    draw_main_screen(&mut display);
+    //draw_main_screen(&mut display);
 
     let _ = display.update();
 
+    let items = ["Lynix", "QR", "Device Info"];
+
+    // Draw menu items.
+    let mut selected_item = 1;
+
+    draw_menu(&mut display, items, selected_item);
+
+    let _ = display.update();
 
     let mut serial = unsafe { USB_SERIAL.as_mut().unwrap() };
 
+    let mut is_in_program = false;
+
     loop {
-        if !btn_up.is_low().unwrap() {
+        if !is_in_program {
+            if btn_up.is_high().unwrap() {
+                let _ = display.clear(BinaryColor::On);
+                selected_item -= 1;
+                draw_menu(&mut display, items, selected_item);
+                let _ = display.update();
+            }
+
+            if btn_down.is_high().unwrap() {
+                let _ = display.clear(BinaryColor::On);
+                selected_item += 1;
+                draw_menu(&mut display, items, selected_item);
+                let _ = display.update();
+            }
+
+            if btn_a.is_high().unwrap() {
+                // Clear display before launching a program
+                let _ = display.clear(BinaryColor::On);
+
+                // Set program mode
+                is_in_program = true;
+
+                match selected_item {
+                    0 => draw_main_screen(&mut display),
+                    1 => draw_socials_screen(&mut display),
+                    2 => draw_info_screen(&mut display),
+                    _ => {}
+                }
+            }
+        }
+
+        if btn_b.is_high().unwrap() {
+            // Clear display before launching program menu
             let _ = display.clear(BinaryColor::On);
-            draw_main_screen(&mut display);
-        }
 
-        if !btn_down.is_low().unwrap() {
-            let _ = display.clear(BinaryColor::On);
-            draw_socials_screen(&mut display);
-        }
+            // Clear Program Mode
+            is_in_program = false;
 
-        // Set Low Power Mode (Battery Only)
-        if !btn_a.is_low().unwrap() {
-            // TODO: Set Energy Mode (12 MHz or 4Mhz)
-
-            // Disable 3v Rails
-            power.set_low().unwrap();
+            selected_item = 0;
+            draw_menu(&mut display, items, selected_item);
+            let _ = display.update();
         }
-
-        // College Yr Start Program
-        if !btn_b.is_low().unwrap() {
-            let _ = display.clear(BinaryColor::On);
-            draw_ccnb_screen(&mut display);
-        }
-
-        if !btn_c.is_low().unwrap() {
-            let _ = display.clear(BinaryColor::On);
-            draw_info_screen(&mut display);
-        }
-        
-        led_pin.set_high().unwrap();
     }
 }
