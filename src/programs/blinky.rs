@@ -26,9 +26,9 @@ pub fn draw_blinky_screen<SPI, CS, DC, BUSY, RESET>(display: &mut uc8151::Uc8151
     RESET: OutputPin,
 {
     // Draw Initial Screen
-    draw::draw_image(display, include_bytes!("../../assets/options.bmp"), 0, 0);
+    draw::draw_image(display, include_bytes!("../../assets/blink.bmp"), 0, 0);
     draw::draw_textbox(display, "Blinky Test", PROFONT_24_POINT, BinaryColor::Off, HorizontalAlignment::Left, 42, 3, (WIDTH - 42), 0);
-    draw::draw_textbox(display, "led go blink.", PROFONT_14_POINT, BinaryColor::Off, HorizontalAlignment::Left, 0, 38, (WIDTH), 0);
+    draw::draw_textbox(display, "OwO, led go blink.", PROFONT_14_POINT, BinaryColor::Off, HorizontalAlignment::Left, 0, 38, (WIDTH), 0);
     let _ = display.update();
 }
 

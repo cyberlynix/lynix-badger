@@ -192,10 +192,10 @@ fn main() -> ! {
 
     let _ = display.update();
 
-    let items = ["Lynix Badge", "CCNB", "Socials + QR", "Device Info", "Blinky", "Settings"];
+    let items = ["Lynix Badge", "CCNB", "Socials + QR", "Device Info", "Blinky", "DEFCON Furs", "Cryptography", "Settings"];
 
     // Draw menu items.
-    let mut selected_item = 1;
+    let mut selected_item = 0;
 
     //crate::programs::menu::draw_menu(&mut display, items, selected_item, 0);
 
@@ -205,7 +205,11 @@ fn main() -> ! {
     let mut initial_screen_drawn = false;
     let mut current_program = ProgramState::Lynix;
 
+    // Countdown
+    let mut counter = 0;
+
     loop {
+        count_down.start(1u32.secs());
 
         // Read Buttons
         let btn_up_pressed = btn_up.is_high().unwrap();
@@ -222,9 +226,19 @@ fn main() -> ! {
 
         match current_program {
             ProgramState::Menu => {
+                count_down.start(1u32.millis());
+
                 // Draw Screen
                 if !initial_screen_drawn {
+                    let _ = display.setup(&mut delay, uc8151::LUT::Ultrafast);
+
+                    // Make sure screen is cleared
+                    let _ = display.clear(BinaryColor::On);
+                    let _ = display.update();
+                    let _ = display.update();
+
                     menu::draw_menu(&mut display, items, selected_item, 0);
+                    let _ = display.update();
                     let _ = display.update();
                     initial_screen_drawn = true;
                 }
@@ -243,6 +257,7 @@ fn main() -> ! {
                 );
 
                 if let Some(program_state) = new_program {
+                    let _ = display.setup(&mut delay, uc8151::LUT::Fast);
                     current_program = program_state;
                     let _ = display.clear(BinaryColor::On);
                     initial_screen_drawn = false;
@@ -264,12 +279,41 @@ fn main() -> ! {
                     draw_main_screen(&mut display);
                     initial_screen_drawn = true;
                 }
+                counter += 1;
+
+                if counter == 10 {
+                    let _ = display.clear(BinaryColor::On);
+                    draw_socials_screen(&mut display);
+                    led_pin.set_high().unwrap();
+                }
+
+                if counter == 20 {
+                    counter = 0;
+                    initial_screen_drawn = false;
+                    let _ = display.clear(BinaryColor::On);
+                    led_pin.set_low().unwrap();
+                }
             }
             ProgramState::Ccnb => {
                 // Draw Screen
                 if !initial_screen_drawn {
                     draw_ccnb_screen(&mut display);
                     initial_screen_drawn = true;
+                }
+
+                counter += 1;
+
+                if counter == 10 {
+                    let _ = display.clear(BinaryColor::On);
+                    draw_socials_screen(&mut display);
+                    led_pin.set_high().unwrap();
+                }
+
+                if counter == 20 {
+                    counter = 0;
+                    initial_screen_drawn = false;
+                    let _ = display.clear(BinaryColor::On);
+                    led_pin.set_low().unwrap();
                 }
             }
             ProgramState::Socials => {
@@ -300,5 +344,6 @@ fn main() -> ! {
             }
             // Handle programs that are not found
         }
+        let _ = nb::block!(count_down.wait());
     }
 }

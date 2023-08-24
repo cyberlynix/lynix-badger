@@ -23,7 +23,7 @@ use crate::{draw, ProgramState};
 
 pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
-    items: [&str; 6],
+    items: [&str; 8],
     selected_item: usize,
     page: usize
 ) where
@@ -33,7 +33,7 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     BUSY: InputPin,
     RESET: OutputPin,
 {
-    draw::draw_image(display, include_bytes!("../../assets/options.bmp"), 0, 0);
+    draw::draw_image(display, include_bytes!("../../assets/app.bmp"), 0, 0);
     draw::draw_textbox(display, "Programs", PROFONT_24_POINT, BinaryColor::Off, HorizontalAlignment::Left, 42, 3, (WIDTH - 42), 0);
 
     let items_per_page = 4;
@@ -46,7 +46,7 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
     draw::draw_text(display, &page_text, BinaryColor::Off, (WIDTH - 50) as i32, (HEIGHT - 5) as i32);
 
     for (index, item) in items.iter().enumerate().skip(start_index).take(items_per_page) {
-        let y_position = 30 + (14 + (index as i32 - start_index as i32) * 20); // Adjust positioning as needed.
+        let y_position = 40 + (14 + (index as i32 - start_index as i32) * 20); // Adjust positioning as needed.
 
         // Highlight the selected item.
         if index == selected_item {
@@ -77,7 +77,7 @@ pub fn draw_menu<SPI, CS, DC, BUSY, RESET>(
 
 pub fn handle_menu_program<SPI, CS, DC, BUSY, RESET>(
     display: &mut Uc8151<SPI, CS, DC, BUSY, RESET>,
-    items: [&str; 6],
+    items: [&str; 8],
     current_item: &mut usize,
     btn_up_pressed: bool,
     btn_down_pressed: bool,

@@ -25,6 +25,6 @@ pub fn draw_info_screen<SPI, CS, DC, BUSY, RESET>(display: &mut uc8151::Uc8151<S
     // Draw Initial Screen
     draw::draw_image(display, include_bytes!("../../assets/options.bmp"), 0, 0);
     draw::draw_textbox(display, "Device Info", PROFONT_24_POINT, BinaryColor::Off, HorizontalAlignment::Left, 42, 3, (WIDTH - 42), 0);
-    draw::draw_textbox(display, "FW Version: v1.2.0\nSerial #: FREAK-4921.8222023\nLynix E-Ink Badge", PROFONT_14_POINT, BinaryColor::Off, HorizontalAlignment::Left, 0, 38, (WIDTH), 0);
+    draw::draw_textbox(display, "FW Version: v2.0.7\nSerial #: FREAK-4921.8222023\nLynix E-Ink Badge", PROFONT_14_POINT, BinaryColor::Off, HorizontalAlignment::Left, 0, 38, (WIDTH), 0);
     let _ = display.update();
 }
